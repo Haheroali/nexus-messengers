@@ -51,6 +51,10 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      - name: Install Android 35 Platform
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+
       - name: Build debug APK
         working-directory: apps/web/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
