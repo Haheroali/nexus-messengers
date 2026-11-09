@@ -12,6 +12,9 @@ permissions:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -28,14 +31,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: 'npm'
           cache-dependency-path: package-lock.json
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Install dependencies
         run: npm install
@@ -49,19 +46,11 @@ jobs:
 
       - name: Sync Capacitor Android project
         working-directory: apps/web
-        run: |
-          set -a
-          source .env.production
-          set +a
-          npx cap sync android
-
-      - name: Make Gradle wrapper executable
-        working-directory: apps/web/android
-        run: chmod +x gradlew
+        run: npx cap sync android
 
       - name: Build debug APK
         working-directory: apps/web/android
-        run: ./gradlew assembleDebug
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
