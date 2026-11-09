@@ -3,6 +3,10 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.nexus.messenger"
     compileSdk = rootProject.ext.compileSdkVersion
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
     defaultConfig {
         applicationId "com.nexus.messenger"
         minSdkVersion rootProject.ext.minSdkVersion

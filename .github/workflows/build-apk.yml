@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
           cache: gradle
           cache-dependency-path: apps/web/android/**/*.gradle*
 
@@ -53,7 +53,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: apps/web/android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon --warning-mode all
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
