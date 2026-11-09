@@ -18,6 +18,7 @@ test-results/
 .env
 .env.*
 !.env.example
+!apps/web/.env.production
 .npmrc
 secrets/
 **/secrets/

@@ -19,16 +19,21 @@ const env = (key: string, fallback?: string) => process.env[key] ?? fallback;
 if (env('NODE_ENV') === 'production' && (!env('JWT_SECRET') || !env('JWT_REFRESH_SECRET'))) throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be configured in production');
 const prisma = new PrismaClient();
 const app = Fastify({ logger: true, bodyLimit: 2_000_000, trustProxy: true });
-const redis = new Redis({ host: env('REDIS_HOST', 'localhost'), port: Number(env('REDIS_PORT', '6379')), password: env('REDIS_PASSWORD'), lazyConnect: true, maxRetriesPerRequest: 2 });
-const pub = new Redis({ host: env('REDIS_HOST', 'localhost'), port: Number(env('REDIS_PORT', '6379')), password: env('REDIS_PASSWORD'), lazyConnect: true });
+const redisUrl = env('REDIS_URL');
+const redisOptions = { host: env('REDIS_HOST', 'localhost'), port: Number(env('REDIS_PORT', '6379')), password: env('REDIS_PASSWORD'), lazyConnect: true as const };
+const redis = redisUrl
+  ? new Redis(redisUrl, { ...redisOptions, maxRetriesPerRequest: 2 })
+  : new Redis({ ...redisOptions, maxRetriesPerRequest: 2 });
+const pub = redisUrl ? new Redis(redisUrl, redisOptions) : new Redis(redisOptions);
 const sub = pub.duplicate();
-const io = new Server({ cors: { origin: env('WEB_ORIGIN', 'http://localhost:3000'), credentials: true }, pingInterval: 10_000, pingTimeout: 20_000 });
+const webOrigins = (env('WEB_ORIGIN', 'http://localhost:3000') ?? '').split(',').map(origin => origin.trim()).filter(Boolean);
+const io = new Server({ cors: { origin: webOrigins, credentials: true }, pingInterval: 10_000, pingTimeout: 20_000 });
 const s3 = new S3Client({ region: 'us-east-1', endpoint: env('S3_ENDPOINT', 'http://localhost:9000')!, forcePathStyle: true, credentials: { accessKeyId: env('S3_ACCESS_KEY', 'nexus_minio_user')!, secretAccessKey: env('S3_SECRET_KEY', 'nexus_minio_password_2026')! } });
 const publicS3 = new S3Client({ region: 'us-east-1', endpoint: env('S3_PUBLIC_ENDPOINT', 'http://localhost:9000')!, forcePathStyle: true, credentials: { accessKeyId: env('S3_ACCESS_KEY', 'nexus_minio_user')!, secretAccessKey: env('S3_SECRET_KEY', 'nexus_minio_password_2026')! } });
 let bucketSetup: Promise<void> | undefined;
-const ensureMediaBucket = async () => { if (!bucketSetup) bucketSetup = (async () => { const Bucket = env('S3_BUCKET', 'nexus-media')!; try { await s3.send(new HeadBucketCommand({ Bucket })); } catch { await s3.send(new CreateBucketCommand({ Bucket })); } await s3.send(new PutBucketCorsCommand({ Bucket, CORSConfiguration: { CORSRules: [{ AllowedOrigins: [env('WEB_ORIGIN', 'http://localhost:3000')!], AllowedMethods: ['GET', 'PUT', 'HEAD'], AllowedHeaders: ['*'], ExposeHeaders: ['ETag'], MaxAgeSeconds: 3600 }] } })); })(); try { await bucketSetup; } catch (error) { bucketSetup = undefined; throw error; } };
+const ensureMediaBucket = async () => { if (!bucketSetup) bucketSetup = (async () => { const Bucket = env('S3_BUCKET', 'nexus-media')!; try { await s3.send(new HeadBucketCommand({ Bucket })); } catch { await s3.send(new CreateBucketCommand({ Bucket })); } await s3.send(new PutBucketCorsCommand({ Bucket, CORSConfiguration: { CORSRules: [{ AllowedOrigins: webOrigins, AllowedMethods: ['GET', 'PUT', 'HEAD'], AllowedHeaders: ['*'], ExposeHeaders: ['ETag'], MaxAgeSeconds: 3600 }] } })); })(); try { await bucketSetup; } catch (error) { bucketSetup = undefined; throw error; } };
 
-await app.register(cors, { origin: env('WEB_ORIGIN', 'http://localhost:3000'), credentials: true });
+await app.register(cors, { origin: webOrigins, credentials: true });
 await app.register(helmet, { contentSecurityPolicy: { directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"], baseUri: ["'none'"] } } });
 await app.register(sensible);
 await app.register(rateLimit, { max: 120, timeWindow: '1 minute', redis });
