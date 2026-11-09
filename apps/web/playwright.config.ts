@@ -1,0 +1,4 @@
+import { defineConfig, devices } from '@playwright/test';
+const webServer = process.env.NEXUS_E2E_EXTERNAL_SERVERS === '1' ? undefined : { command: 'npm run dev --prefix ../..', url: 'http://localhost:3000', reuseExistingServer: !process.env.CI, timeout: 120_000 };
+const globalSetup = process.env.NEXUS_E2E_EXTERNAL_SERVERS === '1' ? './e2e/wait-for-stack.ts' : undefined;
+export default defineConfig({ testDir: './e2e', fullyParallel: false, forbidOnly: Boolean(process.env.CI), retries: process.env.CI ? 1 : 0, reporter: 'list', timeout: 120_000, expect: { timeout: 10_000 }, use: { baseURL: 'http://localhost:3000', navigationTimeout: 120_000, ...devices['Desktop Chrome'], launchOptions: { args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] } }, workers: 1, webServer, globalSetup });

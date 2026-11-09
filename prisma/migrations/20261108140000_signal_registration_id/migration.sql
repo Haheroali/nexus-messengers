@@ -1,0 +1,2 @@
+ALTER TABLE "DeviceKeyBundle"
+  ADD COLUMN "registrationId" INTEGER NOT NULL DEFAULT 1;

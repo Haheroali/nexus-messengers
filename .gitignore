@@ -1,0 +1,55 @@
+# Dependencies and generated web output
+node_modules/
+**/node_modules/
+.turbo/
+**/.turbo/
+.next/
+**/.next/
+out/
+**/out/
+dist/
+**/dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.npmrc
+secrets/
+**/secrets/
+credentials.json
+**/credentials.json
+*.pem
+*.key
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.keystore
+*.jks
+apps/web/android/app/google-services.json
+apps/web/ios/App/App/GoogleService-Info.plist
+
+# Android build output and local SDK config
+**/.gradle/
+**/build/
+**/local.properties
+**/captures/
+**/.cxx/
+**/outputs/
+
+# iOS build output and signing/user state
+**/Pods/
+**/DerivedData/
+**/xcuserdata/
+**/*.xcuserstate
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.log
+.idea/

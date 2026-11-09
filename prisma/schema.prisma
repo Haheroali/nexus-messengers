@@ -1,0 +1,266 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserStatus {
+  ONLINE
+  OFFLINE
+  AWAY
+}
+
+enum ChatType {
+  DIRECT
+  GROUP
+  CHANNEL
+}
+
+enum MessageType {
+  TEXT
+  VOICE
+  IMAGE
+  VIDEO
+  FILE
+  POLL
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id              String         @id @default(uuid())
+  phoneNumber     String?        @unique
+  email           String?        @unique
+  username        String         @unique
+  displayName     String
+  avatarUrl       String?
+  bio             String?
+  publicKey       String         // Legacy profile identity key; Signal session keys live in DeviceKeyBundle
+  passwordHash    String?
+  status          UserStatus     @default(OFFLINE)
+  lastSeen        DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  memberships     ChatMember[]
+  sentMessages    Message[]      @relation("SentMessages")
+  stories         Story[]
+  postLikes       PostLike[]
+  pollVotes       PollVote[]
+  reactions       Reaction[]
+  posts           Post[]
+  postComments    PostComment[]
+  storyViews      StoryView[]
+  refreshTokens   RefreshToken[]
+  keyBundles      DeviceKeyBundle[]
+
+  @@index([username])
+  @@index([phoneNumber])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model DeviceKeyBundle {
+  id             String   @id @default(uuid())
+  userId         String
+  deviceId       String
+  registrationId Int      @default(1)
+  identityKey    String
+  signedPreKey   Json
+  oneTimePreKeys Json
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, deviceId])
+  @@index([userId])
+}
+
+model Chat {
+  id              String         @id @default(uuid())
+  type            ChatType       @default(DIRECT)
+  title           String?        // Null for direct chats
+  avatarUrl       String?
+  description     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  members         ChatMember[]
+  messages        Message[]
+  channel         Channel?
+
+  @@index([type])
+}
+
+model ChatMember {
+  id              String         @id @default(uuid())
+  chatId          String
+  userId          String
+  role            Role           @default(MEMBER)
+  joinedAt        DateTime       @default(now())
+  lastReadMessageId String?
+
+  chat            Chat           @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id              String         @id @default(uuid())
+  chatId          String
+  senderId        String
+  type            MessageType    @default(TEXT)
+  content         String?        // Encrypted ciphertext or raw text
+  mediaUrl        String?
+  mediaMetadata   Json?          // Waveforms, duration, resolution, size
+  status          MessageStatus  @default(SENT)
+  replyToId       String?
+  isPinned        Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  chat            Chat           @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender          User           @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo         Message?       @relation("Replies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies         Message[]      @relation("Replies")
+  reactions       Reaction[]
+
+  @@index([chatId, createdAt])
+}
+
+model Reaction {
+  id              String         @id @default(uuid())
+  messageId       String
+  userId          String
+  emoji           String
+  createdAt       DateTime       @default(now())
+
+  message         Message        @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+model Story {
+  id              String         @id @default(uuid())
+  userId          String
+  mediaUrl        String
+  caption         String?
+  expiresAt       DateTime
+  createdAt       DateTime       @default(now())
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  views           StoryView[]
+
+  @@index([expiresAt])
+}
+
+model StoryView {
+  id        String   @id @default(uuid())
+  storyId   String
+  userId    String
+  viewedAt  DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([storyId, userId])
+}
+
+model Channel {
+  id          String   @id @default(uuid())
+  chatId      String   @unique
+  slug        String   @unique
+  public      Boolean  @default(true)
+  chat        Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id              String         @id @default(uuid())
+  authorId        String
+  content         String
+  mediaUrls       String[]
+  createdAt       DateTime       @default(now())
+  author          User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  likes           PostLike[]
+  comments         PostComment[]
+  poll            Poll?
+}
+
+model PostComment {
+  id        String   @id @default(uuid())
+  postId    String
+  userId    String
+  content   String   @db.VarChar(1200)
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model PostLike {
+  id              String         @id @default(uuid())
+  postId          String
+  userId          String
+
+  post            Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model Poll {
+  id              String         @id @default(uuid())
+  postId          String         @unique
+  question        String
+  options         PollOption[]
+  votes           PollVote[]
+
+  post            Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model PollOption {
+  id              String         @id @default(uuid())
+  pollId          String
+  text            String
+  votes           PollVote[]
+
+  poll            Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+}
+
+model PollVote {
+  id              String         @id @default(uuid())
+  pollId          String
+  optionId        String
+  userId          String
+
+  option          PollOption     @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  poll            Poll           @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+}

@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexus_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: nexus_admin
+      POSTGRES_PASSWORD: nexus_secure_password_2026
+      POSTGRES_DB: nexus_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus_admin -d nexus_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexus_redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass nexus_redis_secret
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "nexus_redis_secret", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: docker.io/pgsty/silo:RELEASE.2026-10-26T00-00-00Z
+    container_name: nexus_storage
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: nexus_minio_user
+      MINIO_ROOT_PASSWORD: nexus_minio_password_2026
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  app:
+    image: node:24-bookworm
+    container_name: nexus_app
+    working_dir: /workspace
+    command: sh -c "npm run db:generate && npm run db:migrate:deploy && npm run dev"
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "4000:4000"
+    volumes:
+      - .:/workspace
+      - app_node_modules:/workspace/node_modules
+      - npm_cache:/root/.npm
+    environment:
+      APP_ENV: development
+      PORT: 4000
+      WEB_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://nexus_admin:nexus_secure_password_2026@postgres:5432/nexus_db?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: nexus_redis_secret
+      JWT_SECRET: nexus_super_jwt_secret_key_change_in_production_2026
+      JWT_REFRESH_SECRET: nexus_super_refresh_jwt_secret_key_2026
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_BUCKET: nexus-media
+      S3_ACCESS_KEY: nexus_minio_user
+      S3_SECRET_KEY: nexus_minio_password_2026
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  app_node_modules:
+    external: true
+    name: nexus-autonomous-agent_app_node_modules
+  npm_cache:
+    external: true
+    name: nexus-autonomous-agent_npm_cache
