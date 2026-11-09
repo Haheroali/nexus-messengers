@@ -48,9 +48,12 @@ jobs:
         working-directory: apps/web
         run: npx cap sync android
 
+      - name: Accept Android SDK licenses
+        run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Build debug APK
         working-directory: apps/web/android
-        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon --stacktrace --info
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
