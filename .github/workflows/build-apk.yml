@@ -16,20 +16,20 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: apps/web/android/**/*.gradle*
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: package-lock.json
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-          cache-dependency-path: apps/web/android/**/*.gradle*
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
@@ -39,6 +39,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema=prisma/schema.prisma
 
       - name: Build web app
         working-directory: apps/web
@@ -52,6 +55,10 @@ jobs:
           set +a
           npx cap sync android
 
+      - name: Make Gradle wrapper executable
+        working-directory: apps/web/android
+        run: chmod +x gradlew
+
       - name: Build debug APK
         working-directory: apps/web/android
         run: ./gradlew assembleDebug
@@ -59,7 +66,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-android-debug
+          name: nexus-app-debug
           path: apps/web/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
