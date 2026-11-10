@@ -2,7 +2,7 @@ services:
   - type: web
     name: nexus-server
     runtime: node
-    plan: 0.5c-512mb
+    plan: free
     region: frankfurt
     buildCommand: npm install && npx prisma generate --schema=prisma/schema.prisma && npm run build
     preDeployCommand: npm run db:migrate:deploy
@@ -30,9 +30,9 @@ services:
       - key: S3_BUCKET
         sync: false
       - key: S3_ACCESS_KEY
-        sync: false
+        value: replace-with-s3-access-key
       - key: S3_SECRET_KEY
-        sync: false
+        value: replace-with-s3-secret-key
 
 databases:
   - name: nexus-db
