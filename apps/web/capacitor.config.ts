@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://nexus-server-suul.onrender.com';
 
 const config: CapacitorConfig = {
   appId: 'com.nexus.messenger',
