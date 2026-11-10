@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    buildCommand: npm install && npx prisma generate --schema=prisma/schema.prisma && npm run build
+    buildCommand: npm install && npx prisma generate --schema=prisma/schema.prisma && npm run build --workspace=@nexus/server
     startCommand: npx prisma migrate deploy --schema=prisma/schema.prisma && npm run start --workspace=@nexus/server
     healthCheckPath: /health
     envVars:

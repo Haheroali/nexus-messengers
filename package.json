@@ -14,8 +14,10 @@
     "db:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "db:studio": "prisma studio --schema=prisma/schema.prisma"
   },
+  "dependencies": {
+    "prisma": "^5.21.0"
+  },
   "devDependencies": {
-    "prisma": "^5.21.0",
     "turbo": "^2.1.0",
     "typescript": "^5.6.0"
   },
